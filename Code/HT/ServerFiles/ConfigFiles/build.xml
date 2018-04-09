@@ -1,0 +1,615 @@
+<?xml version="1.0"?>
+
+<!-- TODO: -->
+<!-- Add a help target - DONE -->
+<!-- Add a version target - DONE -->
+<!-- Add clean targets - DONE -->
+<!-- Make clean targets less agressive - DONE-->
+<!-- Add EJB clean targets DONE -->
+<!-- Refresh from the VCS -->
+<!-- "distribution clean" involving the removal of everything but this build file
+     and the subsequent retrieval of *everything* from the VCS -->
+<!-- Build WebLogic EJB jars - DONE -->
+<!-- Deploy classes - DONE -->
+<!-- Create documentation - DONE -->
+<!-- Deploy documentation -->
+<!-- Run test classes -->
+<!-- Replace build-help with descriptions -->
+<!-- Create a war - DONE -->
+<!-- Deploy a war - DONE -->
+
+<!-- Ant build file for Barbados -->
+<!-- Author: Eugenia Duncan -->
+<!-- HotelTools, Inc -->
+
+<!--
+  Ant will be used as the system building application for HotelTools.
+  Ant is provided as part of the Jakarta project, run by the Apache Group.
+  Ant is a Java program that parses an XML file to do various tasks.  In
+  terms of functionality, Ant closely mimmicks GNU Make.  For Java project
+  development, Ant is much better than GNU Make and is truly platform
+  independent.
+
+  To use Ant and this build.xml file, you need the following:
+  
+    Sun's JDK 1.2.2
+    Jikes (provided by IBM's open source development groups)
+    WebLogic 5.1.0 and the service pack designated by weblogic.service.level
+    Ant Release 1.2rc (build from 13 October 2000)
+
+  Build concepts
+
+    Ant (and GNU Make) builds are based on a process which separates the
+    building of a project into distinct tasks.  For this project, these
+    tasks will be:
+      
+      Preparing build and documentation directories
+      Retrieving latest versions of all source code
+      Compiling all, or specific subsets of the source code
+      Building EJBs
+      Preparing JARs and WARs
+      Producing Javadoc
+      Deploying the classes, JARs, WARs and EJBs
+      Deploying the Javadoc
+      Clean up of classfiles, jars, XML, etc
+      Removal of build and documentation directories
+      Removal of all source code
+
+  Type 'ant help' to get the current list of features
+-->
+
+<!-- Specify the root tag for this project.  Default target is "all" -->
+<project name="Barbados" default="all" basedir=".">
+
+  <!-- 
+       User specific property file
+       On Windows 2000, it's located in c:\Documents and Settings\<username>
+       On Unix, it is the user's $HOME directory
+       The file .ant.properties should be located there
+       
+       Specify the location of weblogic and the JDK
+       weblogic.dir should equal the location of the weblogic installation
+       on your machine.  For example, the following line sets the property
+       weblogic.dir to c:\weblogic
+
+         weblogic.dir=c:/weblogic
+       
+       Note the use of '/'.  Ant is ambivalent to platform directory separators
+       however, '\' is an escape character in strings, so c:\weblogic would not work.
+       c:\\weblogic would.
+
+       The location of the JDK must be specified simlarly
+       with the java.home property.  In .ant.properties, it would look like:
+         
+         java.home=c:/jdk1.2.2
+
+       if the JDK were installed on a Windows machine at c:/jdk1.2.2.
+
+       The base location of the source modules must be specified with root.dir.
+       For example:
+
+         root.dir=c:/src
+
+       Everything else needed for building the project is relative to the
+       root directory.
+
+       While not recommended, any property changes, in addition to weblogic.dir
+       and java.home, can be made in the .ant.properties file.  Keep in mind that
+       other values may rely on the changed properties and any modifications to this
+       file in general should be made with extreme caution.
+  -->
+  <!-- Specify the location of the machine specific properties -->
+  <property file="${user.home}/.ant.properties" />
+  <property file="../project.properties" />
+
+  <!-- Labels for use in logging and build display -->
+  <property name="Name" value="Barbados"/>
+  <property name="name" value="Barbados"/>
+  <property name="version" value="PMS R2 1.0.0A"/>
+  <property name="build.xml.version" value="$Revision: 1.27.2.4.6.5.2.6 $"/>
+  <property name="build.xml.authorlist" value="Eugenia Duncan"/>
+  <property name="build.xml.update" value="$Date: 2001/05/22 15:30:05 $"/>
+
+  <!-- Directories -->
+  <property name="barbados.home" value="."/>
+  <property name="src.dir" value="${root.dir}/source"/>
+  <property name="src.java.dir" value="${src.dir}/java"/>
+  <property name="src.ejb.dir" value="${src.dir}/ejb"/>
+  <property name="src.ejb.descriptor.dir" value="${src.ejb.dir}/descriptor"/>
+  <property name="src.servlet.dir" value="${src.dir}/servlet"/>
+  <property name="src.test.dir" value="${src.dir}/test"/>
+  <property name="src.www.dir" value="${src.dir}/www"/>
+  <property name="src.popchart.dir" value="${src.dir}/popchart"/>
+  <property name="build.dir" value="${src.dir}/build"/>
+  <property name="build.servlet.dir" value="${build.dir}/servlet"/>
+  <property name="build.test.dir" value="${build.dir}/test"/>
+  <property name="build.doc.dir" value="${build.dir}/doc"/>
+  <property name="build.deploy.dir" value="${build.dir}/deploy"/>
+  <property name="ejb.keep.generated" value="false"/>
+  <property name="jlib.dir" value="${src.dir}/jlib"/>
+  <property name="weblogic.lib.dir" value="${weblogic.dir}/lib"/>
+  <property name="weblogic.classes.dir" value="${weblogic.dir}/classes"/>
+  <property name="weblogic.service.level" value="sp9"/>
+  <property name="weblogic.service.pack" value="weblogic510${weblogic.service.level}.jar"/>
+  <property name="java.lib" value="${java.home}/jre/lib/rt.jar"/>
+
+  <!-- Global project exclusions.  Designed to keep track of files that are not
+       part of the CVS tree, but *are* part of the users' development environment -->
+  <!-- Packages to exclude from this build -->
+  <property name="global.package.exclude" value="com/hoteltools/platform/reporting/**"/>
+  <!-- Files to exclude from building, in general -->
+  <property name="global.exclude" value="${global.package.exclude},**/*.dfPackage,**/META-INF/*,**/*.wmf,**/*.vpj,**/*.vpw,**/descriptor,**/TEMP_*.java"/>
+
+  <!-- Classpaths -->
+  <!-- Classpath for running WebLogic tools -->
+  <property name="classpath.weblogic" value="${weblogic.lib.dir}/${weblogic.service.pack}:${weblogic.lib.dir}/weblogicaux.jar:${weblogic.dir}/classes"/>
+  <!-- Third party class packages -->
+  <property name="isv.lib" value="${jlib.dir}/junit.jar:${jlib.dir}/classes12.zip:${jlib.dir}/toolboxapi.jar:${jlib.dir}/xerces.jar:${jlib.dir}/saxon.jar"/>
+  <!-- The compilation classpath.  Universal across *all* packages -->
+  <property name="classpath.compile" value="${build.dir}:${classpath.weblogic}:${isv.lib}:${java.lib}"/>
+  <!-- Claspath for compiling the unit testing classes -->
+  <property name="classpath.compile.test" value="${classpath.compile}:${src.test.dir}:${build.test.dir}"/>
+
+  <!-- This is Ant version 1.2 functionality only 
+  <path id="javaclasspath">
+    <pathelement location="./java" />
+    <pathelement location="./ejb" />
+    <pathelement location="./servlet" />
+    <fileset dir="jlib">
+      <include name="**/*.jar" />
+    </fileset>
+    <pathelement location="${weblogic.lib.dir}/${weblogic.service.pack}" />
+    <pathelement location="${weblogic.lib.dir}/weblogicaux.jar" />
+    <pathelement location="${weblogic.classes.dir}"/>
+    <pathelement location="${java.lib}"/>
+  </path>
+  -->
+
+  <!-- Define what packages should be built -->
+  <property name="packages" value="com.hoteltools.*"/>
+  
+  <!-- Operational preferences -->
+  <!-- Use the faster and cleaner Jikes compiler, from IBM -->
+  <property name="build.compiler" value="jikes"/>
+
+  <!-- 
+       Specify that emacs compatible errors are returned, allowing
+       editors to "jump" to a file location having parsed the error line
+  -->
+<!--  <property name="build.compiler.emacs" value="on"/> -->
+
+  <!-- check optional dependencies -->
+  <target name="check_for_required_packages">
+    <available property="weblogic.sp9" file="${weblogic.lib.dir}/${weblogic.service.pack}"/>
+  </target>
+
+  <!-- Operational tags -->
+
+  <!-- prepare build dir and display "build begin" messages -->
+  <target name="prepare" depends="check_for_required_packages">
+    <tstamp />
+    <echo message="Build of ${Name}, ${version}"/>
+    <echo message="Build number: ${DSTAMP}"/>
+    <echo message="${TODAY} @ ${TSTAMP}"/>
+    <echo message="HotelTools, INC"/>
+    <mkdir dir="${build.dir}"/>
+    <mkdir dir="${build.servlet.dir}"/>
+    <mkdir dir="${build.deploy.dir}"/>
+    <available file="${src.servlet.dir}" property="Servlet.present"/>
+    <available file="${src.java.dir}" property="Java.present"/>
+    <available file="${src.ejb.dir}" property="EJB.present"/>
+  </target>
+
+  <!-- Update source from the VCS -->
+  <!-- Need to make the TAG a command-line option -->
+  <!-- Need to make module aliases for the packages -->
+  <target name="update"
+          if="cvs.tag"
+          description="Restore distribution from CVS">
+    <!-- Use the CVS rule to update the source -->
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/java"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/jlib"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/ejb"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/www"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/servlet"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/test"
+         tag="${cvs.tag}"/>
+    <cvs cvsRoot=":pserver:missbuild@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/popchart"
+         tag="${cvs.tag}"/>
+  </target>
+
+  <!-- Update only the JSPs -->
+  <target name="update-jsp"
+          if="cvs.tag"
+          description="Update JSPs from CVS">
+    <cvs cvsRoot=":pserver:${cvs.user}@chillywilly:/usr/pms"
+         dest="${root.dir}"
+         package="source/www"
+         tag="${cvs.tag}"/>
+  </target>
+  
+  <!-- Compile all source code (default target) -->
+  <target name="all" 
+          depends="prepare,java,ejb"
+          description="compile java, ejb and servlet source trees"/>
+
+  <!-- Compile source code in java -->
+  <target name="java" 
+          depends="prepare"
+          description="compile the java source tree">
+    <javac srcdir="${src.java.dir}:${src.ejb.dir}"
+           destdir="${build.dir}"
+           debug="on"
+           deprecation="on"
+           optimize="on"
+           includes="**/*.java"
+           excludes="${global.exclude}">
+       <classpath path="${classpath.compile}" />
+    </javac>
+   </target>
+
+  <!-- Compile source code in ejb -->
+  <target name="ejb" 
+          depends="prepare,java"
+          description="compile the ejb source tree">
+    <javac srcdir="${src.ejb.dir}:${src.java.dir}"
+           destdir="${build.dir}"
+           debug="on"
+           deprecation="on"
+           includes="**/*.java"
+           excludes="${global.exclude}"
+           optimize="off">
+       <classpath path="${classpath.compile}" />
+    </javac>
+   </target>
+ 
+  <target name="www"
+          depends="update-jsp"
+          if="weblogic.server.home"
+          description="deploy the www tree">
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/public_html/jsp">
+      <fileset dir="${src.www.dir}/jsp"/>
+    </copy>
+  </target>
+      
+  <!-- Build the EJBs -->
+  <target name="ejb-build" 
+          depends="ejb" 
+          if="weblogic.sp9"
+          description="compile and build all EJBs">
+    <ejbjar srcdir="${build.dir}"
+            descriptordir="${src.ejb.dir}/descriptor">
+      <weblogic destdir="${build.deploy.dir}"
+                classpath="${build.dir}:${classpath.weblogic}:${isv.lib}"
+                keepgenerated="${ejb.keep.generated}"
+                compiler="jikes -nowarn"/>
+      <include name="**/*-ejb-jar.xml"/>
+      <exclude name="**/*weblogic*.xml"/>
+    </ejbjar>
+  </target>
+
+  <!-- Build a specific bean -->
+  <target name="ejb-build-bean"
+          depends="ejb"
+          description="compile a build a specific EJB.  To specify a bean,
+                            enter -Dbuild.bean=&lt;bean name&gt; on the Ant command line."
+          if="weblogic.sp9">
+    <ejbjar srcdir="${build.dir}"
+            descriptordir="${src.ejb.dir}/descriptor/${build.bean}"
+            destdir="${build.deploy.dir}">
+      <weblogic destdir="${build.deploy.dir}"
+                classpath="${build.dir}:${classpath.weblogic}:${isv.lib}"
+                keepgenerated="${ejb.keep.generated}"
+                compiler="jikes -nowarn"/>
+      <include name="**/*-ejb-jar.xml"/>
+      <exclude name="**/*weblogic*.xml"/>
+    </ejbjar>
+  </target>
+ 
+  <!--  Compile source code in servlet -->
+  <target name="servlet" 
+          depends="prepare,java" 
+          if="Servlet.present"
+          description="compile the servlet source tree">
+    <javac srcdir="${src.servlet.dir}:${src.ejb.dir}:${src.java.dir}"
+           destdir="${build.servlet.dir}"
+           debug="on"
+           deprecation="on"
+           includes="**/*.java"
+           excludes="${global.exclude}"
+           optimize="off">
+        <classpath path="${classpath.compile}" />
+    </javac>
+  </target>
+
+  <!-- Deployment/undeployment and installation/uninstallation -->
+  <target name="deploy" depends="all" if="weblogic.server.home"
+          description="copy classes to the WebLogic server specified by
+                          ${weblogic.dir}/${weblogic.server.home}.  You must specify 
+                          weblogic.server.home on the command line using the -D option">
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/serverclasses">
+      <fileset dir="${build.dir}">
+        <include name="**/*.class"/>
+      </fileset>
+    </copy>
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/servletclasses">
+      <fileset dir="${build.servlet.dir}">
+        <include name="**/*.class"/>
+      </fileset>
+    </copy>
+    <copy flatten="yes" todir="${weblogic.dir}/${weblogic.server.home}">
+      <fileset dir="${build.deploy.dir}">
+        <include name="**/*.jar"/>
+      </fileset>
+    </copy>
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/public_html/jsp">
+      <fileset dir="${src.www.dir}/jsp"/>
+    </copy>
+    <copy todir="${weblogic.dir}/lib">
+      <fileset dir="${jlib.dir}">
+        <include name="**/*.jar"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="popchart-deploy"
+          if="weblogic.server.home">
+    <copy todir="${popchart.dir}">
+      <fileset dir="${src.popchart.dir}"/>
+    </copy>
+  </target>
+
+<!-- Test class deployment/undeployment and installation/uninstallation -->
+  <target name="test-deploy" depends="test" if="weblogic.server.home" >
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/serverclasses/test">
+      <fileset dir="${build.test.dir}"/>
+    </copy>
+  </target>
+
+  <target name="test_harness-deploy"
+          if="weblogic.server.home">
+    <copy todir="${weblogic.dir}/${weblogic.server.home}/public_html/test_harness">
+      <fileset dir="${src.test.dir}/test_harness2">
+        <include name="**/*.jsp"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="undeploy"
+          if="weblogic.server.home"
+          description="remove classes from the WebLogic server.  The property
+                         weblogic.server.home must be specified on the command line
+                          using the -D option">
+    <delete>
+      <fileset dir="${weblogic.dir}/${weblogic.server.home}/serverclasses">
+        <include name="**/*.class"/>
+      </fileset>
+    </delete>
+    <delete>
+      <fileset dir="${weblogic.dir}/${weblogic.server.home}/servletclasses">
+        <include name="**/*.class"/>
+      </fileset>
+      <fileset dir="${weblogic.dir}/${weblogic.server.home}">
+        <include name="*.jar"/>
+      </fileset>
+    </delete>
+    <delete>
+      <fileset dir="${weblogic.dir}/${weblogic.server.home}/public_html">
+        <include name="**/*.jsp"/>
+      </fileset>
+    </delete>
+  </target>
+
+  <target name="popchart-undeploy"
+          if="weblogic.server.home">
+    <delete>
+      <fileset dir="/export/home/missbuild/pcdeploy">
+        <include name="*.bin"/>
+      </fileset>
+    </delete>
+  </target>
+
+  <!-- WAR the entire product.  Need to move everything, www, build, web.xml
+       to a temporary directory and then WAR it up -->
+  <target name="war" 
+          depends="all,ejb-build"
+          description="build the hoteltools.war file">
+    <delete file="${build.dir}/hoteltools.war"/>
+    <war warfile="${build.dir}/hoteltools.war" webxml="${src.www.dir}/web.xml">
+      <fileset dir="${src.www.dir}">
+        <include name="**/*.jsp"/>
+      </fileset>
+      <lib dir="${build.deploy.dir}">
+        <include name="**/*.jar"/>
+      </lib>
+      <webinf dir="${src.www.dir}">
+        <include name="weblogic.xml"/>
+      </webinf> 
+      <classes dir="${build.dir}">
+        <include name="**/*.class"/>
+      </classes>
+      <classes dir="${build.servlet.dir}">
+        <include name="**/*.class"/>
+      </classes>
+    </war>
+  </target>
+ 
+  <target name="ejbwar" depends="all,ejb-build">
+    <delete file="${build.dir}/hoteltools.war"/>
+    <war warfile="${build.dir}/hoteltools.war" webxml="${src.www.dir}/web.xml">
+      <lib dir="${build.deploy.dir}">
+        <include name="**/*.jar"/>
+      </lib>
+      <webinf dir="${src.www.dir}">
+        <include name="weblogic.xml"/>
+      </webinf> 
+    </war>
+  </target>
+ 
+  <target name="war-deploy" 
+          depends="war" 
+          if="weblogic.server.home"
+          description="copy the hoteltools.war file to
+                         ${weblogic.dir}/${weblogic.server.home}  You must 
+                         specify weblogic.server.home on the command line using
+                         the -D option">
+    <delete file="${weblogic.dir}/${weblogic.server.home}/hoteltools.war"/>
+    <copy todir="${weblogic.dir}/${weblogic.server.home}">
+      <fileset dir="${build.dir}">
+        <include name="hoteltools.war"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <!-- Clean the classfiles -->
+  <target name="clean"
+          depends="prepare"
+          description="remove classes and jars from build tree">
+    <delete>
+      <fileset dir="${build.dir}">
+        <include name="**/*.class"/>
+      </fileset>
+    </delete>
+    <delete>
+      <fileset dir="${build.deploy.dir}">
+        <include name="**/*.jar"/>
+      </fileset>
+    </delete>
+    <delete>
+      <fileset dir="${build.servlet.dir}">
+        <include name="**/*.class"/>
+      </fileset>
+    </delete>
+  </target>
+
+  <!-- Clean everything -->
+  <target name="cleanall" 
+          depends="clean-javadoc"
+          description="remove build tree entirely">
+    <delete dir="${build.dir}"/>
+  </target>
+
+  <!-- Distribution clean -->
+  <!-- This kills the sourcefiles too -->
+  <target name="distclean"
+          if="weblogic.server.home"
+          depends="cleanall"
+          description="remove source files">
+    <delete dir="${src.java.dir}"/>
+    <delete dir="${src.www.dir}"/>
+    <delete dir="${src.ejb.dir}"/>
+    <delete dir="${src.servlet.dir}"/>
+  </target>
+
+  <!-- Documentation creation -->
+  <target name="javadoc-prepare">
+   <mkdir dir="${build.doc.dir}"/>
+  </target>
+
+  <target name="javadoc" 
+          depends="javadoc-prepare"
+          description="create Javadoc for project (NOTE: Project must compile for this target to complete)">
+    <echo message="Create code documentation"/>
+    <echo message="Location: ${build.doc.dir}"/>
+    
+    <javadoc packagenames="com.hoteltools.*"
+             sourcepath="./java:./ejb:./servlet"
+             classpath="${classpath.compile}"
+             destdir="${build.doc.dir}"
+             author="true"
+             version="true"
+             use="true"
+             windowtitle="HotelTools"
+             doctitle="&lt;h2&gt;HotelTools: ANTIGUA&lt;/h2&gt;">
+      <link href="http://java.sun.com/products/jdk/1.2/docs/api/"/>
+      <link href="http://java.sun.com/j2ee/j2sdkee/techdocs/api/"/>
+    </javadoc>
+  </target>
+
+  <!-- This has *GOT TO CHANGE* to allow for command-line specification 
+       of the build -->
+  <target name="javadoc-deploy"
+          if="document.repository"
+          description="copy built Javadoc to a central document repository at ${document.repository}.  Only useful for build management">
+    <copy todir="${document.repository}">
+      <fileset dir="${build.doc.dir}">
+        <include name="**/*"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="clean-javadoc"
+          description="remove doc build tree">
+    <delete dir="${build.doc.dir}"/>
+  </target>
+
+  <!-- Unit testing specific stuff -->
+  <!-- Perpare the build directory for test classes --> 
+  <target name="prepare-test" depends="prepare">
+    <mkdir dir="${build.test.dir}"/>
+  </target>
+
+  <!-- Build the test classes -->
+  <target name="test" 
+          depends="all,prepare-test"
+          description="compile the test source tree">
+    <javac srcdir="${src.test.dir}"
+           destdir="${build.test.dir}"
+           debug="on"
+           deprecation="on"
+           optimize="off"
+           includes="**/*.java"
+           excludes="${global.exclude}">
+      <classpath path="${classpath.compile.test}" />
+    </javac>
+  </target>
+
+  <!-- Clean the test build -->
+  <target name="clean-test"
+          description="remove classes in test build tree">
+    <delete dir="${build.test.dir}" includes="**/*.class"/>
+  </target>
+
+  <!-- Empty target just to test parsing the build.xml file -->
+  <target name="test-ant">
+    <echo message="  build.xml parsed correctly"/>
+  </target>
+
+  <!-- Print build.xml version information -->
+  <target name="version">
+    <echo message="build.xml version ${build.xml.version}"/>
+    <echo message="Author(s):${build.xml.authorlist}"/>
+    <echo message="Last updated:${build.xml.update}"/>
+  </target>
+  
+  <!-- Mail notification of the build completion -->
+  <target name="notify">
+    <mail from="missbuild"
+          tolist="eduncan@hoteltools.com,jtilly@hoteltools.com,mgarrett@hoteltools.com,dmcmichael@hoteltools.com,sbarr@hoteltools.com"
+          subject="Build results"
+          mailhost="mail.hoteltools.com"
+          files="build.log"/>
+  </target>
+</project>
+
+<!-- Change list -->
+<!-- $ Log $ -->

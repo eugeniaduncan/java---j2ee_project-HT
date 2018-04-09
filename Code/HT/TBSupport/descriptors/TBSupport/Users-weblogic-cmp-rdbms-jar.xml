@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE weblogic-rdbms-bean PUBLIC 
+ "-//BEA Systems, Inc.//DTD WebLogic 5.1.0 EJB RDBMS Persistence//EN"
+ "http://www.bea.com/servers/wls510/dtd/weblogic-rdbms-persistence.dtd">
+<weblogic-rdbms-bean>
+  <pool-name>hotelPool</pool-name>
+  <schema-name></schema-name>
+  <table-name>SYSTEM_USER</table-name>
+  <attribute-map>
+    <object-link>
+      <bean-field>user_id</bean-field>
+      <dbms-column>USER_ID</dbms-column>
+    </object-link>
+    <object-link>
+      <bean-field>username</bean-field>
+      <dbms-column>USER_NAME</dbms-column>
+    </object-link>
+    <object-link>
+      <bean-field>password</bean-field>
+      <dbms-column>USER_SECURED_PASSWORD</dbms-column>
+    </object-link>
+<!--    
+    <object-link>
+      <bean-field>phone</bean-field>
+      <dbms-column>PHONE_NO</dbms-column>
+    </object-link>
+    <object-link>
+      <bean-field>cell_phone</bean-field>
+      <dbms-column>CELL_NO</dbms-column>
+    </object-link>
+    <object-link>
+      <bean-field>company</bean-field>
+      <dbms-column>COMPANY</dbms-column>
+    </object-link>
+-->    
+    
+  </attribute-map>
+  
+  <finder-list>
+    <finder>
+      <method-name>findByUserID</method-name>
+      <method-params>
+        <method-param>int</method-param>
+      </method-params>
+       <finder-query><![CDATA[ (= user_id $0)]]></finder-query>
+   </finder>  
+    <finder>
+      <method-name>findByUserName</method-name>
+      <method-params>
+        <method-param>java.lang.String</method-param>
+      </method-params>
+       <finder-query><![CDATA[ (= username $0)]]></finder-query>
+   </finder>
+       <finder>
+      <method-name>findByPassword</method-name>
+      <method-params>
+        <method-param>java.lang.String</method-param>
+      </method-params>
+       <finder-query><![CDATA[ (= password $0)]]></finder-query>
+   </finder>
+  </finder-list>
+  <options>
+    <use-quoted-names>false</use-quoted-names>
+  </options>
+</weblogic-rdbms-bean>

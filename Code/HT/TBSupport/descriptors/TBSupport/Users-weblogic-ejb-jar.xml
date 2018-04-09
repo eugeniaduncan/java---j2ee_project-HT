@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE weblogic-ejb-jar PUBLIC '-//BEA Systems, Inc.//DTD WebLogic 5.1.0 EJB//EN' 'http://www.bea.com/servers/wls510/dtd/weblogic-ejb-jar.dtd'>
+
+<weblogic-ejb-jar>
+    <weblogic-enterprise-bean>
+      <ejb-name>UsersBean</ejb-name>
+      <caching-descriptor>
+	<max-beans-in-cache>100</max-beans-in-cache>
+	<cache-strategy>Read-Only</cache-strategy>
+	<read-timeout-seconds>60</read-timeout-seconds>
+      </caching-descriptor>
+      <persistence-descriptor>
+	<persistence-type>
+	  <type-identifier>WebLogic_CMP_RDBMS</type-identifier>
+	  <type-version>5.1.0</type-version>
+	  <type-storage>META-INF/weblogic-cmp-rdbms-jar.xml</type-storage>
+	</persistence-type>
+	<persistence-use>
+	  <type-identifier>WebLogic_CMP_RDBMS</type-identifier>
+	  <type-version>5.1.0</type-version>
+	</persistence-use>
+      </persistence-descriptor>
+      <clustering-descriptor>
+        <home-is-clusterable>true</home-is-clusterable>
+      </clustering-descriptor>      
+      <jndi-name>ejb.Users</jndi-name>
+    </weblogic-enterprise-bean>
+  </weblogic-ejb-jar>
+

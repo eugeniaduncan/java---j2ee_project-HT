@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE ejb-jar PUBLIC
+ '-//Sun Microsystems, Inc.//DTD Enterprise JavaBeans 1.1//EN'
+ 'http://java.sun.com/j2ee/dtds/ejb-jar_1_1.dtd'>
+
+<ejb-jar>
+   <enterprise-beans>
+      <entity>
+         <ejb-name>UsersBean</ejb-name>
+         <home>com.hoteltools.tbsupport.UsersHome</home>
+         <remote>com.hoteltools.tbsupport.Users</remote>
+         <ejb-class>com.hoteltools.tbsupport.UsersBean</ejb-class>
+         <persistence-type>Container</persistence-type>
+         <prim-key-class>com.hoteltools.tbsupport.UsersPK</prim-key-class>
+         <reentrant>False</reentrant>
+        <cmp-field>
+            <field-name>user_id</field-name>
+         </cmp-field>
+         <cmp-field>
+            <field-name>username</field-name>
+         </cmp-field>
+         <cmp-field>
+            <field-name>password</field-name>
+         </cmp-field>
+<!--         
+        <cmp-field>
+            <field-name>phone</field-name>
+         </cmp-field>
+         <cmp-field>
+            <field-name>cell_phone</field-name>
+         </cmp-field>
+         <cmp-field>
+            <field-name>company</field-name>
+         </cmp-field>
+-->                  
+       </entity>
+   </enterprise-beans>
+
+   <assembly-descriptor>
+      <container-transaction>
+         <method>
+            <ejb-name>UsersBean</ejb-name>
+            <method-intf>Remote</method-intf>
+            <method-name>*</method-name>
+         </method>
+         <trans-attribute>Required</trans-attribute>
+      </container-transaction>
+   </assembly-descriptor>
+</ejb-jar>
